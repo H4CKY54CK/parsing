@@ -7,3 +7,6 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET HEADERS BASE_DIRS include FILES i
 
 add_executable(grr src/main.cpp)
 target_link_libraries(grr parsing)
+
+# add_executable(test_parsing tests/test_parsing.cpp)
+# target_link_libraries(test_parsing parsing)

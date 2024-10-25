@@ -50,6 +50,7 @@ namespace parsing {
   inline auto get_argtype(const std::vector<std::string>& values) -> argtypes;
   inline auto get_required(const std::vector<std::string>& values) -> bool;
 
+
   // Action declaration
   struct Action {
     std::vector<std::string> flags_;
@@ -68,7 +69,8 @@ namespace parsing {
     std::unordered_map<std::string, bool> user_provided;
     std::string help_ {""};
 
-    Action(const std::initializer_list<std::string>& values);
+    explicit Action(const std::string& value);
+    explicit Action(const std::initializer_list<std::string>& values);
     auto dest(const std::string& value) -> Action&;
     auto nargs(const std::string& value) -> Action&;
     auto nargs(std::size_t value) -> Action&;
@@ -93,6 +95,7 @@ namespace parsing {
 
     ActionGroup(ArgumentParser& parent, std::string name);
 
+    auto add_argument(const std::string& value) -> Action&;
     auto add_argument(const std::initializer_list<std::string>& values) -> Action&;
   };
 
@@ -141,9 +144,11 @@ namespace parsing {
     ArgumentParser(std::string name);
 
     auto add_argument_group(const std::string& name) -> ActionGroup&;
+    auto add_argument(const std::string& value) -> Action&;
     auto add_argument(const std::initializer_list<std::string>& values) -> Action&;
     void add_help(bool value);
     void show_help();
+    auto parse_args(const std::vector<std::string>& vec) -> std::unordered_map<std::string, Result>;
     auto parse_args(int argc, char** argv) -> std::unordered_map<std::string, Result>;
   };
 }
@@ -331,6 +336,8 @@ auto parsing::get_required(const std::vector<std::string>& values) -> bool {
 
 
 // Action definition
+parsing::Action::Action(const std::string& value) : Action({value}) {}
+
 parsing::Action::Action(const std::initializer_list<std::string>& values)
   : flags_(values)
   , flags_string_(join("/", sorted_by_size(values)))
@@ -472,6 +479,14 @@ void parsing::Action::_check(const std::string& method) {
 // ActionGroup definition
 parsing::ActionGroup::ActionGroup(ArgumentParser& parent, std::string name) : parent(parent), name(std::move(name)) {}
 
+auto parsing::ActionGroup::add_argument(const std::string& value) -> parsing::Action& {
+  if (value.substr(0, 1) == "-") {
+    return add_argument({value});
+  }
+  arguments.emplace_back(value);
+  return arguments.back();
+}
+
 auto parsing::ActionGroup::add_argument(const std::initializer_list<std::string>& values) -> parsing::Action& {
   for (auto& group : parent.groups) {
     for (auto& flag : values) {
@@ -610,6 +625,22 @@ parsing::ArgumentParser::ArgumentParser(std::string name) : name(std::move(name)
 auto parsing::ArgumentParser::add_argument_group(const std::string& name) -> parsing::ActionGroup& {
   groups.emplace_back(*this, name);
   return groups.back();
+}
+
+auto parsing::ArgumentParser::add_argument(const std::string& value) -> parsing::Action& {
+  argtypes at_ = value.substr(0, 1) == "-" ? argtypes::optional : argtypes::positional;
+  switch (at_) {
+    case argtypes::positional: {
+      return groups.at(0).add_argument(value);
+    }
+    case argtypes::optional: {
+      return groups.at(1).add_argument(value);
+    }
+    default: {
+      error("ArgumentParser", "unrecognized argument type: " + argtype_mapping[at_]);
+      std::quick_exit(1);
+    }
+  }
 }
 
 auto parsing::ArgumentParser::add_argument(const std::initializer_list<std::string>& values) -> parsing::Action& {
@@ -756,6 +787,10 @@ void parsing::ArgumentParser::show_help() {
 
 auto parsing::ArgumentParser::parse_args(int argc, char** argv) -> std::unordered_map<std::string, parsing::Result> {
   std::vector<std::string> vec(argv, argv + argc);
+  return parse_args(vec);
+}
+
+auto parsing::ArgumentParser::parse_args(const std::vector<std::string>& vec) -> std::unordered_map<std::string, parsing::Result> {
   std::unordered_map<std::string, Result> results;
   std::deque<std::string> remaining;
 
