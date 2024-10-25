@@ -117,13 +117,13 @@ namespace parsing {
     explicit operator std::vector<std::string>() const;
     explicit operator std::vector<int>() const;
 
-    auto as_bool() -> bool;
-    auto as_int() -> int;
-    auto as_char() -> char;
-    auto as_size_t() -> std::size_t;
-    auto as_string() -> std::string;
-    auto as_strings() -> std::vector<std::string>;
-    auto as_ints() -> std::vector<int>;
+    [[nodiscard]] auto as_bool() const -> bool;
+    [[nodiscard]] auto as_int() const -> int;
+    [[nodiscard]] auto as_char() const -> char;
+    [[nodiscard]] auto as_size_t() const -> std::size_t;
+    [[nodiscard]] auto as_string() const -> std::string;
+    [[nodiscard]] auto as_strings() const -> std::vector<std::string>;
+    [[nodiscard]] auto as_ints() const -> std::vector<int>;
   };
 
 
@@ -588,31 +588,31 @@ parsing::Result::operator std::vector<int>() const {
   return vec;
 }
 
-auto parsing::Result::as_bool() -> bool {
+auto parsing::Result::as_bool() const -> bool {
   return bool(*this);
 }
 
-auto parsing::Result::as_int() -> int {
+auto parsing::Result::as_int() const -> int {
   return int(*this);
 }
 
-auto parsing::Result::as_char() -> char {
+auto parsing::Result::as_char() const -> char {
   return std::string(*this).c_str()[0];
 }
 
-auto parsing::Result::as_size_t() -> std::size_t {
+auto parsing::Result::as_size_t() const -> std::size_t {
   return std::size_t(*this);
 }
 
-auto parsing::Result::as_string() -> std::string {
+auto parsing::Result::as_string() const -> std::string {
   return std::string(*this);
 }
 
-auto parsing::Result::as_strings() -> std::vector<std::string> {
+auto parsing::Result::as_strings() const -> std::vector<std::string> {
   return std::vector<std::string>(*this);
 }
 
-auto parsing::Result::as_ints() -> std::vector<int> {
+auto parsing::Result::as_ints() const -> std::vector<int> {
   return std::vector<int>(*this);
 }
 
@@ -978,9 +978,7 @@ auto parsing::ArgumentParser::parse_args(const std::vector<std::string>& vec) ->
         if (argument.argtype_ == argtypes::optional) {
           continue;
         }
-        if (argument.nargs_ == "@") {
-          known += argument.min_nargs_;
-        }
+        known += argument.min_nargs_;
       }
     }
 
@@ -990,38 +988,44 @@ auto parsing::ArgumentParser::parse_args(const std::vector<std::string>& vec) ->
         if (argument.argtype_ == argtypes::optional) {
           continue;
         }
-        std::size_t pix = remaining.size();
 
-        // Exactly X
         if (argument.nargs_ == "@") {
           for (std::size_t ix = 0; ix < argument.min_nargs_; ++ix) {
             results[argument.dest_].append(remaining.front());
             remaining.pop_front();
+            known--;
           }
         }
 
-        // 0 or 1
         else if (argument.nargs_ == "?") {
-          if ((remaining.size() - known) > 0) {
+          if (remaining.size() > known) {
             results[argument.dest_].append(remaining.front());
             remaining.pop_front();
           }
         }
 
-        // 0 or more and 1 or more
-        else if (argument.nargs_ == "*" or argument.nargs_ == "+") {
-          for (std::size_t ix = 0; ix < (pix - known); ++ix) {
+        else if (argument.nargs_ == "*") {
+          while (remaining.size() > known) {
             results[argument.dest_].append(remaining.front());
             remaining.pop_front();
           }
         }
+
+        else if (argument.nargs_ == "+") {
+          known--;
+          do {
+            results[argument.dest_].append(remaining.front());
+            remaining.pop_front();
+          } while (remaining.size() > known);
+        }
+
       }
     }
   }
 
   // If any left over, then we need to error
   if (not remaining.empty()) {
-    error("ArgumentParser", "unrecognized arguments: " + reprjoin(" ", remaining));
+    error("ArgumentParser", "(this is probably a bug in the parser, honestly) unrecognized arguments: " + reprjoin(" ", remaining));
     std::quick_exit(1);
   }
 
