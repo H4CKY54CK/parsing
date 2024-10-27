@@ -1,16 +1,21 @@
 #include "parsing.hpp"
 
+#include <iostream>
+#include <string>
+#include <vector>
+
+
+
 
 void show_args(std::unordered_map<std::string, parsing::Result> args);
 auto create_parser() -> parsing::ArgumentParser;
 
 
-int main(int argc, char** argv) {
 
+int main(int argc, char** argv) {
   auto parser = create_parser();
   auto args = parser.parse_args(argc - 1, argv + 1);
   show_args(args);
-
   return 0;
 }
 

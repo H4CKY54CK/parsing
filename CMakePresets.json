@@ -128,7 +128,7 @@
   ],
 
   "vendor": {
-    "hashjacks.com/hacky/0.1.1": {
+    "hashjacks.com/parsing/0.1.1": {
       "debug": false
     }
   }
