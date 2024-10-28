@@ -43,12 +43,12 @@ auto create_parser() -> parsing::ArgumentParser {
   parsing::ArgumentParser parser("hacky");
   parser.add_help(false);
 
-  auto& positional_group = parser.add_argument_group("Positional");
+  parsing::ActionGroup& positional_group = parser.add_argument_group("Positional");
   positional_group.add_argument("sources")
       .nargs("+")
       .help("Path(s) to SOURCE directories to check for file duplicates in.");
 
-  auto& inner_group = parser.add_argument_group("General");
+  parsing::ActionGroup& inner_group = parser.add_argument_group("General");
   inner_group.add_argument({"--threads", "-t"})
       .default_value("1")
       .help("How many threads to use.");
@@ -69,7 +69,7 @@ auto create_parser() -> parsing::ArgumentParser {
       .action(parsing::actions::store_const)
       .help("Use a null-terminator instead of newline to separate files and groups in the output.");
 
-  auto& output_group = parser.add_argument_group("Output");
+  parsing::ActionGroup& output_group = parser.add_argument_group("Output");
   output_group.add_argument({"--quiet", "-q"})
       .action(parsing::actions::store_true)
       .help("Don't display the files (still displays anything else that is normally displayed).");
@@ -84,9 +84,9 @@ auto create_parser() -> parsing::ArgumentParser {
       .dest("loglevel")
       .action(parsing::actions::store_const)
       .const_value("10")
-      .help("Show all output.");
+      .help("Show debug info.");
 
-  auto& info_group = parser.add_argument_group("Informational");
+  parsing::ActionGroup& info_group = parser.add_argument_group("Informational");
   info_group.add_argument({"--progress"})
       .action(parsing::actions::store_true)
       .help("Show a helpful progress bar instead of the nothing that currently gets shown.");

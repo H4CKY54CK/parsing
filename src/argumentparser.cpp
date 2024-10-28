@@ -171,23 +171,25 @@ void parsing::ArgumentParser::show_help() {
 }
 
 auto parsing::ArgumentParser::parse_args(int argc, char** argv) -> std::unordered_map<std::string, parsing::Result> {
-  std::vector<std::string> vec(argv, argv + argc);
-  return parse_args(vec);
+  return parse_args(std::vector<std::string>(argv, argv+argc));
 }
 
-auto parsing::ArgumentParser::parse_args(const std::vector<std::string>& vec) -> std::unordered_map<std::string, parsing::Result> {
+auto parsing::ArgumentParser::parse_args(std::vector<std::string> values) -> std::unordered_map<std::string, parsing::Result> {
+  std::deque<std::string> args(values.begin(), values.end());
   std::unordered_map<std::string, Result> results;
   std::deque<std::string> remaining;
+  std::string current;
 
-  for (auto arg = vec.begin(), end = vec.end(); arg != end; ++arg) {
+  for (auto arg = args.begin(), end = args.end(); arg != end; ++arg) {
+    current = *arg;
 
     // If it looks like an optional argument
-    if (arg->substr(0, 1) == "-") {
+    if (current.substr(0, 1) == "-") {
 
       // Handle --
-      if ((*arg) == "--") {
+      if ((current) == "--") {
         for (++arg; arg != end; ++arg) {
-          remaining.emplace_back(*arg);
+          remaining.emplace_back(current);
         }
         break;
       }
@@ -197,19 +199,30 @@ auto parsing::ArgumentParser::parse_args(const std::vector<std::string>& vec) ->
 
       // Get group where flag might be in
       for (; group != gend; ++group) {
-        if (group->flags.count((*arg)) == 1) {
+        if (group->flags.count((current)) == 1) {
           break;
+        }
+
+        if (current.find("=") != current.npos) {
+          auto left = current.substr(0, current.find("="));
+          auto right = current.substr(left.size() + 1);
+          if (group->flags.count(left) == 1) {
+            args.insert(arg+1, right);
+            current = left;
+            end = args.end();
+            break;
+          }
         }
       }
 
       // Unrecognized optional argument
       if (group == gend) {
-        error("parser", "unrecognized optional argument: " + (*arg));
+        error("parser", "unrecognized optional argument: " + (current));
         std::quick_exit(1);
       }
 
       // Handle valid optional arguments
-      auto opt = group->flags.at(*arg);
+      auto opt = group->flags.at(current);
       if (results.count(opt.dest_) == 1) {
         error("parser", "optional argument already provided: " + opt.flags_string_);
         std::quick_exit(1);
@@ -245,12 +258,13 @@ auto parsing::ArgumentParser::parse_args(const std::vector<std::string>& vec) ->
             results[opt.dest_].clear();
           }
           while ((arg + 1) != end) {
-            arg++;
-            if (arg->substr(0, 1) == "-") {
-              error("parser", opt.flags_string_ + " expects exactly " + repr(opt.min_nargs_) + " value(s), but got ambiguous value: " + repr(*arg));
+            ++arg;
+            current = *arg;
+            if (current.substr(0, 1) == "-") {
+              error("parser", opt.flags_string_ + " expects exactly " + repr(opt.min_nargs_) + " value(s), but got ambiguous value: " + repr(current));
               std::quick_exit(1);
             }
-            results[opt.dest_].append(*arg);
+            results[opt.dest_].append(current);
             if (opt.max_nargs_ > 0 and results[opt.dest_].size() == opt.max_nargs_) {
               break;
             }
@@ -278,7 +292,7 @@ auto parsing::ArgumentParser::parse_args(const std::vector<std::string>& vec) ->
     }
 
     // Positional
-    remaining.emplace_back(*arg);
+    remaining.emplace_back(current);
   }
 
   // Add default arguments

@@ -5,6 +5,7 @@
 #include <deque>
 #include <iomanip>
 #include <iostream>
+#include <list>
 #include <locale>
 #include <sstream>
 #include <string>
@@ -38,7 +39,7 @@ namespace parsing {
     auto add_argument(const std::initializer_list<std::string>& values) -> Action&;
     void add_help(bool value);
     void show_help();
-    auto parse_args(const std::vector<std::string>& vec) -> std::unordered_map<std::string, Result>;
+    auto parse_args(std::vector<std::string> values) -> std::unordered_map<std::string, Result>;
     auto parse_args(int argc, char** argv) -> std::unordered_map<std::string, Result>;
   };
 }
