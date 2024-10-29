@@ -1,4 +1,4 @@
-#include "argumentparser.hpp"
+#include "./parsing/argumentparser.hpp"
 
 
 
@@ -430,4 +430,18 @@ auto parsing::ArgumentParser::parse_args(std::vector<std::string> values) -> std
 
   // Finally, return
   return results;
+}
+
+
+// Part of new parsing logic
+auto parsing::ArgumentParser::split_args(int argc, char** argv) const -> std::deque<std::deque<std::string>> {
+  std::deque<std::deque<std::string>> result;
+  result.emplace_back();
+  for (int ix = 0; ix < argc; ++ix) {
+    if (argv[ix][0] == '-') {
+      result.emplace_back();
+    }
+    result.back().emplace_back(argv[ix]);
+  }
+  return result;
 }
