@@ -1,6 +1,6 @@
-#include "./parsing/actiongroup.hpp"
+#include "parsing/actiongroup.hpp"
 
-#include "./parsing/argumentparser.hpp"
+#include "parsing/argumentparser.hpp"
 
 
 // ActionGroup definition

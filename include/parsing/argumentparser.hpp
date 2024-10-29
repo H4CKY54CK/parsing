@@ -12,9 +12,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "utils.hpp"
-#include "action.hpp"
-#include "actiongroup.hpp"
+#include "parsing/utils.hpp"
+#include "parsing/action.hpp"
+#include "parsing/actiongroup.hpp"
 
 
 namespace parsing {
@@ -42,6 +42,7 @@ namespace parsing {
     auto parse_args(std::vector<std::string> values) -> std::unordered_map<std::string, Result>;
     auto parse_args(int argc, char** argv) -> std::unordered_map<std::string, Result>;
 
-    auto Parser::split_args(int argc, char** argv) const -> std::deque<std::deque<std::string>>;
+    // Part of new 
+    auto split_args(int argc, char** argv) const -> std::deque<std::deque<std::string>>;
   };
 }

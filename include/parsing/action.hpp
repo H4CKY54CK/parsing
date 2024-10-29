@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "utils.hpp"
+#include "parsing/utils.hpp"
 
 namespace parsing {
   // Action declaration
