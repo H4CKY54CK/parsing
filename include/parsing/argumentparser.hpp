@@ -38,11 +38,8 @@ namespace parsing {
     auto add_argument(const std::string& value) -> Action&;
     auto add_argument(const std::initializer_list<std::string>& values) -> Action&;
     void add_help(bool value);
-    void show_help();
-    auto parse_args(std::vector<std::string> values) -> std::unordered_map<std::string, Result>;
-    auto parse_args(int argc, char** argv) -> std::unordered_map<std::string, Result>;
-
-    // Part of new 
-    auto split_args(int argc, char** argv) const -> std::deque<std::deque<std::string>>;
+    void show_help() const;
+    auto parse_args(const std::deque<std::string>& values) const -> std::unordered_map<std::string, Result>;
+    auto parse_args(int argc, char** argv) const -> std::unordered_map<std::string, Result>;
   };
 }
