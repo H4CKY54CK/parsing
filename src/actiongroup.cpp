@@ -1,5 +1,4 @@
 #include "parsing/actiongroup.hpp"
-
 #include "parsing/argumentparser.hpp"
 
 
@@ -15,7 +14,7 @@ auto parsing::ActionGroup::add_argument(const std::string& value) -> parsing::Ac
 }
 
 auto parsing::ActionGroup::add_argument(const std::initializer_list<std::string>& values) -> parsing::Action& {
-  for (auto& group : parent.groups) {
+  for (auto& group : parent.m.groups) {
     for (auto& flag : values) {
       if (group.flags.count(flag) > 0) {
         error("Action", "duplicate flags: " + group.flags.at(flag).flags_string_ + " uses " + flag);

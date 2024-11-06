@@ -9,7 +9,9 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+
 
 namespace parsing {
 
@@ -66,12 +68,12 @@ namespace parsing {
     explicit operator std::vector<std::string>() const;
     explicit operator std::vector<int>() const;
 
-    [[nodiscard]] auto as_bool() const -> bool;
-    [[nodiscard]] auto as_int() const -> int;
-    [[nodiscard]] auto as_char() const -> char;
-    [[nodiscard]] auto as_size_t() const -> std::size_t;
-    [[nodiscard]] auto as_string() const -> std::string;
-    [[nodiscard]] auto as_strings() const -> std::vector<std::string>;
-    [[nodiscard]] auto as_ints() const -> std::vector<int>;
+    auto as_bool() const -> bool;
+    auto as_int() const -> int;
+    auto as_char() const -> char;
+    auto as_size_t() const -> std::size_t;
+    auto as_string() const -> std::string;
+    auto as_strings() const -> std::vector<std::string>;
+    auto as_ints() const -> std::vector<int>;
   };
 }

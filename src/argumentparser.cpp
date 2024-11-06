@@ -3,23 +3,48 @@
 
 
 // ArgumentParser definition
-parsing::ArgumentParser::ArgumentParser(std::string name) : name(std::move(name)) {
-  add_help(true);
+parsing::ArgumentParser::ArgumentParser(M m) : m(std::move(m)) {}
+
+parsing::ArgumentParser::ArgumentParser(const ArgumentParser& other) : m(other.m) {}
+
+parsing::ArgumentParser& parsing::ArgumentParser::operator=(const ArgumentParser& other) {
+  if (this == &other) {
+    return *this;
+  }
+  ArgumentParser temp(other);
+  std::swap(m, temp.m);
+  return *this;
+}
+
+parsing::ArgumentParser::ArgumentParser(ArgumentParser&& other) : m(std::exchange(other.m, M{})) {}
+
+parsing::ArgumentParser& parsing::ArgumentParser::operator=(ArgumentParser&& other) {
+  ArgumentParser temp(std::move(other));
+  std::swap(m, temp.m);
+  return *this;
+}
+
+parsing::ArgumentParser parsing::ArgumentParser::create_parser(std::string value) {
+  ArgumentParser ap(M{std::move(value)});
+  ap.add_argument_group("Positional Arguments");
+  ap.add_argument_group("Options");
+  ap.add_help(true);
+  return ap;
 }
 
 auto parsing::ArgumentParser::add_argument_group(const std::string& name) -> ActionGroup& {
-  groups.emplace_back(*this, name);
-  return groups.back();
+  m.groups.emplace_back(*this, name);
+  return m.groups.back();
 }
 
 auto parsing::ArgumentParser::add_argument(const std::string& value) -> Action& {
   argtypes at_ = value.substr(0, 1) == "-" ? argtypes::optional : argtypes::positional;
   switch (at_) {
     case argtypes::positional: {
-      return groups.at(0).add_argument(value);
+      return m.groups.at(0).add_argument(value);
     }
     case argtypes::optional: {
-      return groups.at(1).add_argument(value);
+      return m.groups.at(1).add_argument(value);
     }
     default: {
       error("ArgumentParser", "unrecognized argument type: " + argtype_mapping[at_]);
@@ -32,10 +57,10 @@ auto parsing::ArgumentParser::add_argument(const std::initializer_list<std::stri
   argtypes at_ = get_argtype(values);
   switch (at_) {
     case argtypes::positional: {
-      return groups.at(0).add_argument(values);
+      return m.groups.at(0).add_argument(values);
     }
     case argtypes::optional: {
-      return groups.at(1).add_argument(values);
+      return m.groups.at(1).add_argument(values);
     }
     default: {
       error("ArgumentParser", "unrecognized argument type: " + argtype_mapping[at_]);
@@ -46,21 +71,21 @@ auto parsing::ArgumentParser::add_argument(const std::initializer_list<std::stri
 
 void parsing::ArgumentParser::add_help(bool value) {
   if (value) {
-    if (not help_added) {
-      groups.at(1).add_argument({"--help", "-h"}).action(actions::help).help("Show this menu and exit.");
-      help_added = true;
+    if (not m.help_added and not m.help_removed) {
+      m.groups.at(1).add_argument({"--help", "-h"}).action(actions::help).help("Show this menu and exit.");
+      m.help_added = true;
     }
   }
   else {
-    if (not help_removed) {
-      for (auto& flag : groups.at(1).arguments.front().flags_) {
+    if (not m.help_removed and m.help_added) {
+      for (auto& flag : m.groups.at(1).arguments.front().flags_) {
         if (flag != "-h" and flag != "--help") {
           return;
         }
-        groups.at(1).flags.erase(flag);
+        m.groups.at(1).flags.erase(flag);
       }
-      groups.at(1).arguments.erase(groups.at(1).arguments.begin());
-      help_removed = true;
+      m.groups.at(1).arguments.erase(m.groups.at(1).arguments.begin());
+      m.help_removed = true;
     }
   }
 }
@@ -68,12 +93,12 @@ void parsing::ArgumentParser::add_help(bool value) {
 void parsing::ArgumentParser::show_help() const {
   std::ostringstream oss;
   // Usage
-  if (not usage.empty()) {
-    oss << usage;
+  if (not m.usage.empty()) {
+    oss << m.usage;
   }
   else {
-    oss << "Usage: " << name;
-    for (auto& group : groups) {
+    oss << "Usage: " << m.name;
+    for (auto& group : m.groups) {
       for (auto& argument: group.arguments) {
         if (argument.argtype_ == argtypes::optional) {
           continue;
@@ -92,7 +117,7 @@ void parsing::ArgumentParser::show_help() const {
         }
       }
     }
-    for (auto& group : groups) {
+    for (auto& group : m.groups) {
       if (group.arguments.empty()) {
         continue;
       }
@@ -121,7 +146,7 @@ void parsing::ArgumentParser::show_help() const {
   auto spaces = [](std::size_t n){ return std::string(n, ' '); };
 
   // Argument Groups
-  for (auto& group : groups) {
+  for (auto& group : m.groups) {
     if (group.arguments.empty()) {
       continue;
     }
@@ -161,8 +186,8 @@ void parsing::ArgumentParser::show_help() const {
   }
 
   // Description
-  if (not description.empty()) {
-    oss << description << '\n';
+  if (not m.description.empty()) {
+    oss << m.description << '\n';
   }
 
   // Flush or we won't see text when piped, as I found out
@@ -188,10 +213,10 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
         break;
       }
 
-      auto group = groups.begin();
+      auto group = m.groups.begin();
 
       // Get group where flag might be in
-      for (; group != groups.end(); ++group) {
+      for (; group != m.groups.end(); ++group) {
         if (group->flags.count(*arg) == 1) {
           break;
         }
@@ -208,7 +233,7 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
       }
 
       // Unrecognized optional argument
-      if (group == groups.end()) {
+      if (group == m.groups.end()) {
         error("parser", "unrecognized optional argument: " + (*arg));
         std::quick_exit(1);
       }
@@ -234,7 +259,7 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
           break;
         }
         case actions::version: {
-          std::cout << version << '\n';
+          std::cout << m.version << '\n';
           std::cout.flush();
           std::quick_exit(1);
         }
@@ -287,7 +312,7 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
   }
 
   // Add default arguments
-  for (auto& group : groups) {
+  for (auto& group : m.groups) {
     for (auto& argument : group.arguments) {
       if (not argument.default_.empty()) {
         if (results[argument.dest_].empty()) {
@@ -298,7 +323,7 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
   }
 
   // Check for required optionals
-  for (auto& group : groups) {
+  for (auto& group : m.groups) {
     for (auto& argument : group.arguments) {
       if (argument.argtype_ == argtypes::positional) {
         continue;
@@ -315,7 +340,7 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
   bool exact = true;
 
   // Get the min and max number of required arguments, and whether there are any that don't need to be exact
-  for (auto& group : groups) {
+  for (auto& group : m.groups) {
     for (const auto& argument: group.arguments) {
       if (argument.argtype_ == argtypes::optional) {
         continue;
@@ -330,7 +355,7 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
   // Check for too few arguments
   if (remaining.size() < lower) {
     std::size_t subtotal = 0;
-    for (auto& group : groups) {
+    for (auto& group : m.groups) {
       for (auto& argument : group.arguments) {
         if (argument.argtype_ == argtypes::optional) {
           continue;
@@ -346,7 +371,7 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
 
   // If it's exact, then we have exactly the right amount
   if (exact) {
-    for (auto& group : groups) {
+    for (auto& group : m.groups) {
       for (auto& argument: group.arguments) {
         if (argument.argtype_ == argtypes::optional) {
           continue;
@@ -363,7 +388,7 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
   else {
     // Create layout of minimum required arguments per index
     std::size_t known = 0;
-    for (auto& group : groups) {
+    for (auto& group : m.groups) {
       for (auto& argument: group.arguments) {
         if (argument.argtype_ == argtypes::optional) {
           continue;
@@ -373,7 +398,7 @@ auto parsing::ArgumentParser::parse_args(const std::deque<std::string>& values) 
     }
 
     // Distribute them
-    for (auto& group : groups) {
+    for (auto& group : m.groups) {
       for (auto& argument: group.arguments) {
         if (argument.argtype_ == argtypes::optional) {
           continue;
